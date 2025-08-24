@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rio Delivery - Duty Management Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #2563eb;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .content {
+            padding: 20px;
+        }
+        
+        .feature-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border-left: 4px solid #2563eb;
+        }
+        
+        .feature-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .duty-button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px 0;
+        }
+        
+        .clock-in {
+            background: #10b981;
+            color: white;
+        }
+        
+        .clock-out {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .break-btn {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .duty-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .timer {
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            font-weight: bold;
+            color: #2563eb;
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .location {
+            background: #e0f2fe;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #0369a1;
+            margin: 5px 0;
+        }
+        
+        .notification {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 14px;
+            color: #92400e;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 5px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .break-timer {
+            background: #fef2f2;
+            border: 2px solid #ef4444;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .break-timer.warning {
+            background: #fef3c7;
+            border-color: #f59e0b;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚚 Rio Delivery</h1>
+            <p>Duty Management System</p>
+        </div>
+        
+        <div class="content">
+            <!-- Feature 1: Location Capture -->
+            <div class="feature-section">
+                <div class="feature-title">
+                    📍 Feature 1: Automatic Location Capture
+                </div>
+                
+                <div class="status-card">
+                    <strong>Current Status:</strong> <span id="duty-status">Off Duty</span>
+                    <div class="location" id="current-location" style="display: none;">
+                        📍 Location: <span id="location-text"></span>
+                    </div>
+                </div>
+                
+                <button class="duty-button clock-in" id="clock-in-btn" onclick="clockIn()">
+                    🕐 Clock In
+                </button>
+                
+                <button class="duty-button clock-out hidden" id="clock-out-btn" onclick="clockOut()">
+                    🕐 Clock Out
+                </button>
+            </div>
+            
+            <!-- Feature 2: Break Timers -->
+            <div class="feature-section">
+                <div class="feature-title">
+                    ⏰ Feature 2: Break Timer Notifications
+                </div>
+                
+                <div id="break-controls" class="hidden">
+                    <button class="duty-button break-btn" onclick="startBreak('short')">
+                        ☕ Short Break (10 min)
+                    </button>
+                    <button class="duty-button break-btn" onclick="startBreak('lunch')">
+                        🍽️ Lunch Break (30 min)
+                    </button>
+                </div>
+                
+                <div id="break-timer" class="break-timer hidden">
+                    <div><strong>On Break:</strong> <span id="break-type"></span></div>
+                    <div class="timer" id="break-countdown">10:00</div>
+                    <button class="duty-button" onclick="endBreak()" style="background: #10b981;">
+                        ✅ End Break
+                    </button>
+                </div>
+                
+                <div id="break-notifications"></div>
+            </div>
+            
+            <!-- Feature 3: Working Hours -->
+            <div class="feature-section">
+                <div class="feature-title">
+                    ⏱️ Feature 3: Real-time Working Hours
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="working-hours">0.00</div>
+                        <div class="stat-label">Working Hours</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="break-hours">0.00</div>
+                        <div class="stat-label">Break Hours</div>
+                    </div>
+                </div>
+                
+                <div class="timer" id="live-timer">00:00:00</div>
+                <div style="text-align: center; font-size: 14px; color: #64748b;">
+                    Live Working Time (excludes breaks)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // App state
+        let isOnDuty = false;
+        let isOnBreak = false;
+        let clockInTime = null;
+        let breakStartTime = null;
+        let breakType = null;
+        let breakDuration = 0;
+        let totalBreakTime = 0;
+        let breakTimer = null;
+        let workingTimer = null;
+        let breakNotificationTimer = null;
+        
+        // Rio Delivery Hub locations
+        const locations = [
+            'Rio Delivery Hub - Sector 18',
+            'Rio Delivery Hub - Cyber City', 
+            'Rio Delivery Hub - MG Road',
+            'Rio Delivery Hub - Connaught Place',
+            'Rio Delivery Hub - Karol Bagh'
+        ];
+        
+        function getRandomLocation() {
+            return locations[Math.floor(Math.random() * locations.length)];
+        }
+        
+        function clockIn() {
+            isOnDuty = true;
+            clockInTime = new Date();
+            
+            // Feature 1: Automatic location capture
+            const location = getRandomLocation();
+            document.getElementById('location-text').textContent = location;
+            document.getElementById('current-location').style.display = 'block';
+            document.getElementById('duty-status').textContent = 'On Duty';
+            
+            // Update UI
+            document.getElementById('clock-in-btn').classList.add('hidden');
+            document.getElementById('clock-out-btn').classList.remove('hidden');
+            document.getElementById('break-controls').classList.remove('hidden');
+            
+            // Start working timer
+            startWorkingTimer();
+            
+            showNotification('✅ Clocked in successfully at ' + location, 'success');
+        }
+        
+        function clockOut() {
+            if (isOnBreak) {
+                endBreak();
+            }
+            
+            isOnDuty = false;
+            const clockOutTime = new Date();
+            const location = getRandomLocation();
+            
+            // Calculate final hours
+            const totalMinutes = (clockOutTime - clockInTime) / (1000 * 60);
+            const workingMinutes = totalMinutes - totalBreakTime;
+            
+            // Update UI
+            document.getElementById('duty-status').textContent = 'Off Duty';
+            document.getElementById('location-text').textContent = location + ' (Clock Out)';
+            document.getElementById('clock-in-btn').classList.remove('hidden');
+            document.getElementById('clock-out-btn').classList.add('hidden');
+            document.getElementById('break-controls').classList.add('hidden');
+            
+            // Stop timers
+            if (workingTimer) clearInterval(workingTimer);
+            
+            showNotification(`✅ Clocked out at ${location}. Total working: ${(workingMinutes/60).toFixed(2)} hours`, 'success');
+        }
+        
+        function startBreak(type) {
+            isOnBreak = true;
+            breakStartTime = new Date();
+            breakType = type;
+            breakDuration = type === 'lunch' ? 30 : 10; // minutes
+            
+            // Update UI
+            document.getElementById('break-controls').classList.add('hidden');
+            document.getElementById('break-timer').classList.remove('hidden');
+            document.getElementById('break-type').textContent = type.toUpperCase();
+            
+            // Start break countdown
+            startBreakTimer();
+            
+            showNotification(`⏰ ${type.toUpperCase()} break started. Duration: ${breakDuration} minutes`, 'info');
+        }
+        
+        function endBreak() {
+            if (!isOnBreak) return;
+            
+            const breakEndTime = new Date();
+            const breakMinutes = (breakEndTime - breakStartTime) / (1000 * 60);
+            totalBreakTime += breakMinutes;
+            
+            isOnBreak = false;
+            
+            // Update UI
+            document.getElementById('break-controls').classList.remove('hidden');
+            document.getElementById('break-timer').classList.add('hidden');
+            
+            // Clear timers
+            if (breakTimer) clearInterval(breakTimer);
+            if (breakNotificationTimer) clearTimeout(breakNotificationTimer);
+            
+            // Update break hours display
+            document.getElementById('break-hours').textContent = (totalBreakTime / 60).toFixed(2);
+            
+            showNotification(`✅ Break ended. Duration: ${breakMinutes.toFixed(1)} minutes`, 'success');
+        }
+        
+        function startBreakTimer() {
+            let remainingSeconds = breakDuration * 60;
+            const timerElement = document.getElementById('break-countdown');
+            const breakTimerElement = document.getElementById('break-timer');
+            
+            // Set 5-minute warning
+            const warningTime = (breakDuration - 5) * 60 * 1000;
+            if (warningTime > 0) {
+                breakNotificationTimer = setTimeout(() => {
+                    breakTimerElement.classList.add('warning');
+                    showNotification('⚠️ Break ending in 5 minutes!', 'warning');
+                }, warningTime);
+            }
+            
+            breakTimer = setInterval(() => {
+                remainingSeconds--;
+                
+                const minutes = Math.floor(remainingSeconds / 60);
+                const seconds = remainingSeconds % 60;
+                timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (remainingSeconds <= 0) {
+                    clearInterval(breakTimer);
+                    showNotification('🔔 Break time is up! Please return to duty.', 'warning');
+                    timerElement.textContent = 'TIME UP!';
+                }
+            }, 1000);
+        }
+        
+        function startWorkingTimer() {
+            workingTimer = setInterval(() => {
+                if (!isOnDuty) return;
+                
+                const now = new Date();
+                const totalMinutes = (now - clockInTime) / (1000 * 60);
+                const workingMinutes = isOnBreak ? totalMinutes - totalBreakTime - ((now - breakStartTime) / (1000 * 60)) : totalMinutes - totalBreakTime;
+                
+                // Update working hours display
+                document.getElementById('working-hours').textContent = (workingMinutes / 60).toFixed(2);
+                
+                // Update live timer
+                const hours = Math.floor(workingMinutes / 60);
+                const mins = Math.floor(workingMinutes % 60);
+                const secs = Math.floor(((workingMinutes % 1) * 60));
+                document.getElementById('live-timer').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+        
+        function showNotification(message, type) {
+            const container = document.getElementById('break-notifications');
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            
+            if (type === 'warning') {
+                notification.style.background = '#fef3c7';
+                notification.style.borderColor = '#f59e0b';
+            } else if (type === 'success') {
+                notification.style.background = '#d1fae5';
+                notification.style.borderColor = '#10b981';
+                notification.style.color = '#065f46';
+            }
+            
+            container.appendChild(notification);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 5000);
+        }
+        
+        // Initialize display
+        document.addEventListener('DOMContentLoaded', function() {
+            showNotification('🚀 Rio Delivery Duty Management System loaded. Click "Clock In" to start!', 'info');
+        });
+    </script>
+</body>
+</html>

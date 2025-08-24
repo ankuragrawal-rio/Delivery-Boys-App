@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'presentation/screens/duty_test_screen.dart';
 
 void main() {
   runApp(
@@ -43,6 +44,17 @@ class _SimpleHomeScreenState extends State<SimpleHomeScreen> {
       appBar: AppBar(
         title: const Text('Rio Delivery'),
         actions: [
+          // Duty Test Button
+          IconButton(
+            icon: const Icon(Icons.science),
+            tooltip: 'Duty Management Test',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DutyTestScreen()),
+              );
+            },
+          ),
           // Notifications Badge
           Stack(
             children: [

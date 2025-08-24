@@ -1,39 +1,47 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import '../../data/models/shift_model.dart';
 import '../../data/models/user_model.dart';
-import 'dart:convert';
+import '../../data/mock_services/web_duty_service.dart';
 
-final dutyServiceProvider = Provider<DutyService>((ref) => DutyService());
+final webDutyServiceProvider = Provider<WebDutyService>((ref) => WebDutyService());
+
+final dutyServiceProvider = Provider<DutyService>((ref) => DutyService(ref.read(webDutyServiceProvider)));
 
 final currentShiftProvider = StateNotifierProvider<CurrentShiftNotifier, ShiftModel?>((ref) {
   return CurrentShiftNotifier(ref.read(dutyServiceProvider));
 });
 
+final currentBreakProvider = StateNotifierProvider<CurrentBreakNotifier, BreakRecord?>((ref) {
+  return CurrentBreakNotifier(ref.read(dutyServiceProvider));
+});
+
 final dutyStatusProvider = StateProvider<UserStatus>((ref) => UserStatus.offline);
 
+final dutyStatsProvider = FutureProvider<Map<String, dynamic>>((ref) {
+  return ref.read(dutyServiceProvider).getTodayStats();
+});
+
 class DutyService {
-  static const String _currentShiftKey = 'current_shift';
+  final WebDutyService _webDutyService;
   static const String _dutyStatusKey = 'duty_status';
   
-  late Box<ShiftModel> _shiftsBox;
+  DutyService(this._webDutyService);
   
   Future<void> initialize() async {
-    _shiftsBox = await Hive.openBox<ShiftModel>('shifts');
+    await _webDutyService.initialize();
   }
 
-  Future<ShiftModel?> getCurrentShift() async {
-    final prefs = await SharedPreferences.getInstance();
-    final shiftJson = prefs.getString(_currentShiftKey);
-    
-    if (shiftJson != null) {
-      final shiftData = json.decode(shiftJson);
-      return ShiftModel.fromJson(shiftData);
-    }
-    
-    return null;
+  ShiftModel? getCurrentShift() {
+    return _webDutyService.getCurrentShift();
   }
+
+  BreakRecord? getCurrentBreak() {
+    return _webDutyService.getCurrentBreak();
+  }
+
+  Stream<ShiftModel?> get currentShiftStream => _webDutyService.currentShiftStream;
+  Stream<BreakRecord?> get currentBreakStream => _webDutyService.currentBreakStream;
 
   Future<UserStatus> getDutyStatus() async {
     final prefs = await SharedPreferences.getInstance();
@@ -45,109 +53,49 @@ class DutyService {
   }
 
   Future<ShiftModel> clockIn({String? location}) async {
-    final shift = ShiftModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+    final shift = await _webDutyService.clockIn(
       userId: 'current_user', // TODO: Get from auth service
-      clockInTime: DateTime.now(),
-      clockInLocation: location ?? 'Unknown Location',
-      breaks: [],
-      status: ShiftStatus.active,
+      location: location,
     );
-
-    // Save to local storage
-    await _shiftsBox.put(shift.id, shift);
     
-    // Save current shift
+    // Update duty status
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_currentShiftKey, json.encode(shift.toJson()));
     await prefs.setString(_dutyStatusKey, UserStatus.available.toString().split('.').last);
 
     return shift;
   }
 
-  Future<ShiftModel> clockOut({String? location}) async {
-    final currentShift = await getCurrentShift();
-    if (currentShift == null) {
-      throw Exception('No active shift found');
-    }
-
-    // End any active break
-    if (currentShift.isOnBreak) {
-      await endBreak();
-    }
-
-    final now = DateTime.now();
-    currentShift.clockOutTime = now;
-    currentShift.clockOutLocation = location ?? 'Unknown Location';
-    currentShift.status = ShiftStatus.completed;
-    currentShift.totalHours = currentShift.workingDuration.inMinutes / 60.0;
-    currentShift.totalBreakHours = currentShift.breaks
-        .fold<Duration>(Duration.zero, (sum, b) => sum + b.duration)
-        .inMinutes / 60.0;
-
-    // Save updated shift
-    await _shiftsBox.put(currentShift.id, currentShift);
+  Future<ShiftModel?> clockOut({String? location}) async {
+    final shift = await _webDutyService.clockOut(location: location);
     
-    // Clear current shift
+    // Update duty status
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_currentShiftKey);
     await prefs.setString(_dutyStatusKey, UserStatus.offline.toString().split('.').last);
 
-    return currentShift;
+    return shift;
   }
 
   Future<BreakRecord> startBreak(BreakType type, {String? reason}) async {
-    final currentShift = await getCurrentShift();
-    if (currentShift == null) {
-      throw Exception('No active shift found');
-    }
-
-    if (currentShift.isOnBreak) {
-      throw Exception('Already on break');
-    }
-
-    final breakRecord = BreakRecord(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      startTime: DateTime.now(),
+    final breakRecord = await _webDutyService.startBreak(
       type: type,
       reason: reason,
     );
-
-    currentShift.breaks.add(breakRecord);
     
-    // Save updated shift
-    await _shiftsBox.put(currentShift.id, currentShift);
-    
-    // Update current shift in preferences
+    // Update duty status
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_currentShiftKey, json.encode(currentShift.toJson()));
     await prefs.setString(_dutyStatusKey, UserStatus.onBreak.toString().split('.').last);
 
     return breakRecord;
   }
 
-  Future<BreakRecord> endBreak() async {
-    final currentShift = await getCurrentShift();
-    if (currentShift == null) {
-      throw Exception('No active shift found');
-    }
-
-    final activeBreak = currentShift.breaks.where((b) => b.isActive).firstOrNull;
-    if (activeBreak == null) {
-      throw Exception('No active break found');
-    }
-
-    activeBreak.endTime = DateTime.now();
+  Future<BreakRecord?> endBreak() async {
+    final breakRecord = await _webDutyService.endBreak();
     
-    // Save updated shift
-    await _shiftsBox.put(currentShift.id, currentShift);
-    
-    // Update current shift in preferences
+    // Update duty status
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_currentShiftKey, json.encode(currentShift.toJson()));
     await prefs.setString(_dutyStatusKey, UserStatus.available.toString().split('.').last);
 
-    return activeBreak;
+    return breakRecord;
   }
 
   Future<void> updateDutyStatus(UserStatus status) async {
@@ -156,42 +104,18 @@ class DutyService {
   }
 
   Future<List<ShiftModel>> getShiftHistory({int days = 30}) async {
-    final cutoffDate = DateTime.now().subtract(Duration(days: days));
+    final endDate = DateTime.now();
+    final startDate = endDate.subtract(Duration(days: days));
     
-    return _shiftsBox.values
-        .where((shift) => shift.clockInTime.isAfter(cutoffDate))
-        .toList()
-        ..sort((a, b) => b.clockInTime.compareTo(a.clockInTime));
+    return await _webDutyService.getShiftHistory(
+      limit: 50,
+      startDate: startDate,
+      endDate: endDate,
+    );
   }
 
   Future<Map<String, dynamic>> getTodayStats() async {
-    final today = DateTime.now();
-    final startOfDay = DateTime(today.year, today.month, today.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
-
-    final todayShifts = _shiftsBox.values
-        .where((shift) => 
-            shift.clockInTime.isAfter(startOfDay) && 
-            shift.clockInTime.isBefore(endOfDay))
-        .toList();
-
-    double totalHours = 0;
-    double totalBreakHours = 0;
-    int totalShifts = todayShifts.length;
-
-    for (final shift in todayShifts) {
-      totalHours += shift.workingDuration.inMinutes / 60.0;
-      totalBreakHours += shift.breaks
-          .fold<Duration>(Duration.zero, (sum, b) => sum + b.duration)
-          .inMinutes / 60.0;
-    }
-
-    return {
-      'totalHours': totalHours,
-      'totalBreakHours': totalBreakHours,
-      'totalShifts': totalShifts,
-      'isOnDuty': await getCurrentShift() != null,
-    };
+    return _webDutyService.getTodayStats();
   }
 }
 
@@ -200,30 +124,88 @@ class CurrentShiftNotifier extends StateNotifier<ShiftModel?> {
 
   CurrentShiftNotifier(this._dutyService) : super(null) {
     _loadCurrentShift();
+    _listenToShiftChanges();
   }
 
-  Future<void> _loadCurrentShift() async {
-    final shift = await _dutyService.getCurrentShift();
+  void _loadCurrentShift() {
+    final shift = _dutyService.getCurrentShift();
     state = shift;
+  }
+
+  void _listenToShiftChanges() {
+    _dutyService.currentShiftStream.listen((shift) {
+      state = shift;
+    });
   }
 
   Future<void> clockIn({String? location}) async {
-    final shift = await _dutyService.clockIn(location: location);
-    state = shift;
+    await _dutyService.clockIn(location: location);
+    // State will be updated via stream
   }
 
   Future<void> clockOut({String? location}) async {
     await _dutyService.clockOut(location: location);
-    state = null;
+    // State will be updated via stream
   }
 
   Future<void> startBreak(BreakType type, {String? reason}) async {
     await _dutyService.startBreak(type, reason: reason);
-    await _loadCurrentShift();
+    // State will be updated via stream
   }
 
   Future<void> endBreak() async {
     await _dutyService.endBreak();
-    await _loadCurrentShift();
+    // State will be updated via stream
+  }
+}
+
+class CurrentBreakNotifier extends StateNotifier<BreakRecord?> {
+  final DutyService _dutyService;
+
+  CurrentBreakNotifier(this._dutyService) : super(null) {
+    _loadCurrentBreak();
+    _listenToBreakChanges();
+  }
+
+  void _loadCurrentBreak() {
+    final breakRecord = _dutyService.getCurrentBreak();
+    state = breakRecord;
+  }
+
+  void _listenToBreakChanges() {
+    _dutyService.currentBreakStream.listen((breakRecord) {
+      state = breakRecord;
+    });
+  }
+
+  Future<void> startBreak(BreakType type, {String? reason}) async {
+    await _dutyService.startBreak(type, reason: reason);
+    // State will be updated via stream
+  }
+
+  Future<void> endBreak() async {
+    await _dutyService.endBreak();
+    // State will be updated via stream
+  }
+
+  Duration? get remainingTime {
+    if (state == null) return null;
+    
+    final maxDuration = _getMaxBreakDuration(state!.type);
+    final elapsed = state!.duration;
+    final remaining = maxDuration - elapsed;
+    
+    return remaining.inSeconds > 0 ? remaining : Duration.zero;
+  }
+
+  Duration _getMaxBreakDuration(BreakType type) {
+    switch (type) {
+      case BreakType.lunch:
+        return const Duration(minutes: 30);
+      case BreakType.short:
+        return const Duration(minutes: 10);
+      case BreakType.emergency:
+        return const Duration(minutes: 15);
+    }
   }
 }
