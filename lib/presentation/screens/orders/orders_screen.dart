@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/order_model.dart';
 import '../../../data/mock_services/mock_order_service.dart';
+import 'order_detail_screen.dart';
 
 class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
@@ -326,13 +327,11 @@ class _OrderCard extends StatelessWidget {
   }
 
   void _showOrderDetails(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OrderDetailScreen(order: order),
       ),
-      builder: (context) => _OrderDetailsSheet(order: order),
     );
   }
 
@@ -374,135 +373,3 @@ class _OrderCard extends StatelessWidget {
   }
 }
 
-class _OrderDetailsSheet extends StatelessWidget {
-  final OrderModel order;
-
-  const _OrderDetailsSheet({required this.order});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.8,
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Order #${order.orderNumber}',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          // Customer Info
-          _buildSection(
-            'Customer Information',
-            [
-              _buildDetailRow('Name', order.customerName),
-              _buildDetailRow('Phone', order.customerPhone),
-            ],
-          ),
-          
-          // Delivery Address
-          _buildSection(
-            'Delivery Address',
-            [
-              _buildDetailRow('Address', order.deliveryAddress),
-              if (order.specialInstructions != null)
-                _buildDetailRow('Instructions', order.specialInstructions!),
-            ],
-          ),
-          
-          // Order Items
-          _buildSection(
-            'Order Items',
-            order.orderItems.map((item) =>
-              _buildDetailRow('${item.itemName} (${item.quantity}x)', '₹${item.price.toStringAsFixed(0)}')
-            ).toList(),
-          ),
-          
-          // Payment Info
-          _buildSection(
-            'Payment Information',
-            [
-              _buildDetailRow('Total Amount', '₹${order.totalAmount.toStringAsFixed(0)}'),
-              _buildDetailRow('Payment Method', order.paymentMethod == PaymentMethod.cash ? 'Cash' : 'Online'),
-              _buildDetailRow('Pickup Location', order.pickupLocationCode),
-            ],
-          ),
-          
-          const Spacer(),
-          
-          // Action Buttons
-          if (order.status == OrderStatus.accepted)
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Navigate to QR scanner
-              },
-              child: const Text('Start Pickup'),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSection(String title, List<Widget> children) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        ...children,
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

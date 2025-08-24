@@ -140,13 +140,13 @@
 - [x] Calculate working hours
 - [x] **TEST**: Clock in, take break, resume, clock out, verify times are tracked
 
-### Task 14: Create Availability Status Manager
-- [ ] Build status selector (Available, Busy, On Break)
-- [ ] Auto-update status based on actions
-- [ ] Add manual override option
-- [ ] Show status in app header persistently
-- [ ] Sync status with duty state
-- [ ] **TEST**: Change status manually, accept order (should auto-change to busy)
+### Task 14: Create Availability Status Manager ✅
+- [x] Build status selector (Available, Busy, On Break)
+- [x] Auto-update status based on actions
+- [x] Add manual override option
+- [x] Show status in app header persistently
+- [x] Sync status with duty state
+- [x] **TEST**: Change status manually, accept order (should auto-change to busy)
 
 ## Phase 4: Order Management Core
 
@@ -179,15 +179,15 @@
 - [x] Implement order sorting by priority
 - [x] **TEST**: View orders, swipe actions work, pull to refresh updates list
 
-### Task 18: Build Order Detail Screen
-- [ ] Display complete order information
-- [ ] Show customer details with masked phone
-- [ ] List all items with quantities
-- [ ] Display pickup location prominently
-- [ ] Add special instructions section
-- [ ] Show order timeline
-- [ ] Add action buttons (Accept, Reject, Call)
-- [ ] **TEST**: Open different orders, verify all information displays correctly
+### Task 18: Build Order Detail Screen ✅
+- [x] Display complete order information
+- [x] Show customer details with masked phone
+- [x] List all items with quantities
+- [x] Display pickup location prominently
+- [x] Add special instructions section
+- [x] Show order timeline
+- [x] Add action buttons (Accept, Reject, Call)
+- [x] **TEST**: Open different orders, verify all information displays correctly
 
 ### Task 19: Implement Order Accept/Reject Flow
 - [ ] Create acceptance confirmation dialog

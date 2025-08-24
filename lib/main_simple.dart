@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'presentation/screens/duty_test_screen.dart';
+import 'presentation/screens/availability_test_screen.dart';
+import 'presentation/screens/orders/orders_screen.dart';
+import 'presentation/widgets/status_indicator.dart';
 
 void main() {
   runApp(
@@ -42,72 +45,38 @@ class _SimpleHomeScreenState extends State<SimpleHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Rio Delivery'),
+        title: const Text('Rio Delivery App'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
         actions: [
-          // Duty Test Button
+          // Status indicator in header
+          const Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: StatusIndicator(isCompact: true, showLabel: true),
+          ),
           IconButton(
             icon: const Icon(Icons.science),
-            tooltip: 'Duty Management Test',
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const DutyTestScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const DutyTestScreen(),
+                ),
               );
             },
+            tooltip: 'Duty Management Test',
           ),
-          // Notifications Badge
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications),
-                onPressed: () {},
-              ),
-              if (_notificationCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      '$_notificationCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+          IconButton(
+            icon: const Icon(Icons.settings_accessibility),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AvailabilityTestScreen(),
                 ),
-            ],
-          ),
-          // Status Indicator
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            child: Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: _isOnDuty ? Colors.green : Colors.grey,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _isOnDuty ? 'On Duty' : 'Off Duty',
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ],
-            ),
+              );
+            },
+            tooltip: 'Availability Status Test',
           ),
         ],
       ),
@@ -285,7 +254,14 @@ class _SimpleHomeScreenState extends State<SimpleHomeScreen> {
             children: [
               _buildActionCard('Scan QR', Icons.qr_code_scanner, () {}, Colors.blue),
               _buildActionCard('Cash Management', Icons.account_balance_wallet, () {}, Colors.green),
-              _buildActionCard('View Orders', Icons.assignment, () {}, Colors.orange),
+              _buildActionCard('View Orders', Icons.assignment, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const OrdersScreen(),
+                  ),
+                );
+              }, Colors.orange),
               _buildActionCard('Earnings', Icons.trending_up, () {}, Colors.purple),
             ],
           ),
